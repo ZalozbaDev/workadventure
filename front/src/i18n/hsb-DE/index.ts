@@ -18,7 +18,7 @@ import notification from "./notification";
 import cowebsite from "./cowebsite";
 import actionbar from "./actionbar";
 
-const de_HSB = merge(en_US, {
+const hsb_DE = merge(en_US, {
     audio,
     camera,
     chat,
@@ -38,4 +38,4 @@ const de_HSB = merge(en_US, {
     actionbar,
 });
 
-export default de_HSB;
+export default hsb_DE;
