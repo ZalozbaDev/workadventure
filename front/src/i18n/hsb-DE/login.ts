@@ -4,14 +4,15 @@ import type { Translation } from "../i18n-types";
 const login: DeepPartial<Translation["login"]> = {
     input: {
         name: {
-            placeholder: "Trage deinen Namen ein",
-            empty: "Kein Name angegeben",
-            tooLongError: "Der Name ist zu lang",
-            notValidError: "Der Name ist ungültig",
+            placeholder: "zapisaj swoje mjeno",
+            empty: "žane mjeno zapodate",
+            tooLongError: "mjeno je předołhe",
+            notValidError: "mjeno je njepłaćiwe",
         },
     },
-    terms: 'Wenn du fortfährst, akzeptierst du die <a href="https://workadventu.re/terms-of-use" target="_blank">Nutzungsbedingungen</a>, <a href="https://workadventu.re/privacy-policy" target="_blank">Datenschutzerklärung</a> und <a href="https://workadventu.re/cookie-policy" target="_blank">Cookierichtlinien</a>.',
-    continue: "Fortfahren",
+    terms: 'Hdyž pokročuješ, akceptuješ "<a href="https://workadventu.re/terms-of-use" target="_blank">wužiwanske wuměnjenja</a>, <a href="https://workadventu.re/privacy-policy" target="_blank">wozjewjenje wo škiće datow</a> und <a href="https://workadventu.re/cookie-policy" target="_blank">cookie směrnicy</a>.',
+    continue: "pokročować",
+    no: "ně",
 };
 
 export default login;
