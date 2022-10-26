@@ -18,3 +18,6 @@ echo "#########################################################"
 
 docker buildx build -t workadventure-back-custom -f back/Dockerfile .
 
+# using this bash line to compute words-to-translate
+# for i in $(find front/src/i18n/de-DE/ -name "*.ts"); do cat $i | grep '"' | grep -v import | grep -v const | sed -e s/.*\:// ; done  | wc
+
