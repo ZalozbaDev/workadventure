@@ -3,24 +3,24 @@ import type { Translation } from "../i18n-types";
 
 const report: DeepPartial<Translation["report"]> = {
     block: {
-        title: "Blockieren",
-        content: "Blockiere jegliche Kommunikation mit {userName}. Kann jederzeit rückgängig gemacht werden.",
-        unblock: "Blockierung für diesen Nutzer aufheben",
-        block: "Blockiere diesen Nutzer",
+        title: "blokować",
+        content: "blokuj kóždužkuli komunikaciju z {userName}. Móže so kóždy čas cofnyć. ",
+        unblock: "blokowanje za tutoho wužiwarja zběhnyć",
+        block: "blokuj tutoho wužiwarja",
     },
-    title: "Melden",
+    title: "přizjewić",
     content:
-        "Verfasse eine Beschwerde an die Administratoren dieses Raums. Diese können den Nutzer anschließend bannen.",
+        "Napisaj pohóršk na administratorow tutoho ruma. Tući móža wužiwarja po tym wuzamknyć. ",
     message: {
-        title: "Deine Nachricht: ",
-        empty: "Bitte Text eingeben.",
+        title: "Twoja powěsć:",
+        empty: "prošu tekst zapodać.",
     },
-    submit: "Diesen Nutzer melden",
+    submit: "tutoho wužiwarja přizjewić",
     moderate: {
-        title: "{userName} moderieren",
-        block: "Blockieren",
-        report: "Melden",
-        noSelect: "FEHLER : Es ist keine Handlung ausgewählt.",
+        title: "{userName} moderěrować",
+        block: "blokować",
+        report: "přizjewić",
+        noSelect: "ZMYLK: Njeje žane jednanje wuzwolene.",
     },
 };
 

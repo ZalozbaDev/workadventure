@@ -5,22 +5,22 @@ import { ADMIN_URL } from "../../Enum/EnvironmentVariable";
 const upgradeLink = ADMIN_URL + "/pricing";
 
 const warning: DeepPartial<Translation["warning"]> = {
-    title: "Warnung!",
-    content: `Diese Welt erreicht bald die maximale Kapazität. Du kannst die Kapazität <a href="${upgradeLink}" target="_blank">hier</a> erhöhen`,
-    limit: "Diese Welt erreicht bald die maximale Kapazität!",
+    title: "Warnowanje!",
+    content: `Tutón swět docpěje bórze maksimalnu kapacitu. Móžeš kapacitu wosoby <a href = "${upgradeLink}" target = "_ blank" > tule < a > powyšić`,
+    limit: "Tutón swět docpěje bórze maksimalnu kapacitu!",
     accessDenied: {
-        camera: "Zugriff auf die Kamera verweigert. Hier klicken um deine Browser Berechtigungen zu prüfen.",
+        camera: "Přistup ke kamerje zapowěł. Tu kliknješ, zo bychu so twoje browser woprawnjenja pruwowałi. ",
         screenSharing:
-            "Zugriff auf die Bildschirmfreigabe verweigert. Hier klicken um deine Browser Berechtigungen zu prüfen.",
-        room: "Zutritt nicht gestattet. Dir fehlt die Berechtigung um diesen Raum zu betreten.",
-        teleport: "Sie dürfen sich nicht zu diesem Benutzer beamen.",
+            "Přistup k dowolnosći wobrazowki zapowěł. Tu kliknješ, zo bychu so twoje browser woprawnjenja pruwowałi. ",
+        room: "Přistup njedowoleny. Tebi faluje woprawnje, zo do tuteho ruma zastupiš. ",
+        teleport: "Woni njesmědźa so k tutemu wužiwarjej přisamjenić.",
     },
-    importantMessage: "Wichtige Nachricht",
-    connectionLost: "Verbindungen unterbrochen. Wiederverbinden...",
-    connectionLostTitle: "Verbindungen unterbrochen",
-    connectionLostSubtitle: "Wiederverbinden",
-    waitingConnectionTitle: "Auf Verbindung warten",
-    waitingConnectionSubtitle: "Verbinden",
+    importantMessage: "wažna powěsć",
+    connectionLost: "Zwiski přetorhnjene. Zaso zwjazować.. ",
+    connectionLostTitle: "zwiski přetorhnjene",
+    connectionLostSubtitle: "zaso zwjazować",
+    waitingConnectionTitle: "na zwisk čakać",
+    waitingConnectionSubtitle: "zwjazać",
 };
 
 export default warning;

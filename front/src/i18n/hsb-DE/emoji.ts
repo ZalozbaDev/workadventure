@@ -2,21 +2,21 @@ import { DeepPartial } from "../../Utils/DeepPartial";
 import type { Translation } from "../i18n-types";
 
 const emoji: DeepPartial<Translation["emoji"]> = {
-    search: "Emojis suchen...",
+    search: "emojije pytać...",
     categories: {
-        recents: "Letzte Emojis",
-        smileys: "Smileys & Emotionen",
-        people: "Menschen",
-        animals: "Tiere & Natur",
-        food: "Essen & Trinken",
-        activities: "Aktivitäten",
-        travel: "Reise & Orte",
-        objects: "Objekte",
-        symbols: "Symbole",
-        flags: "Flaggen",
-        custom: "Benutzerdefinier",
+        recents: "poslednje emojije",
+        smileys: "smileje a emocije",
+        people: "čłowjekojo",
+        animals: "zwěrjata a přiroda",
+        food: "jědź a piće",
+        activities: "aktiwity",
+        travel: "jězba a městnosće",
+        objects: "objekty",
+        symbols: "symbole",
+        flags: "chorhoje",
+        custom: "wužiwarjo definowace",
     },
-    notFound: "Keine Emojis gefunden",
+    notFound: "žane emojije namakali",
 };
 
 export default emoji;

@@ -2,17 +2,17 @@ import { DeepPartial } from "../../Utils/DeepPartial";
 import { Translation } from "../i18n-types";
 
 const muc: DeepPartial<Translation["muc"]> = {
-    title: "Benutzerliste",
+    title: "wužiwarska lisćina",
     userList: {
-        disconnected: "Getrennt",
-        isHere: "Ist hier!",
-        teleport: "Teleportieren",
-        search: "Schau es dir einfach an!",
-        walkTo: "Gehen zu",
-        teleporting: "Teleportieren ...",
+        disconnected: "dźělene",
+        isHere: "Je tu!",
+        teleport: "teleportěrować",
+        search: "Wobhladaj sej to prosće!",
+        walkTo: "dźi k",
+        teleporting: "teleportěrować...",
     },
     mucRoom: {
-        reconnecting: "Verbindung zum Präsenzserver wird hergestellt",
+        reconnecting: "zwisk k prezencnemu serwerej so zhotowi",
     },
 };
 

@@ -3,27 +3,27 @@ import type { Translation } from "../i18n-types";
 
 const camera: DeepPartial<Translation["camera"]> = {
     enable: {
-        title: "Bitte schalte deine Kamera und dein Mikrofon ein.",
-        start: "Los gehts!",
+        title: "Prošu zaswěć swoju kameru a swój mikrofon.",
+        start: "Start!",
     },
     help: {
-        title: "Zugriff auf Kamera / Mikrofon erforderlich",
-        permissionDenied: "Zugriff verweigert",
-        content: "Der Zugriff auf Kamera und Mikrofon muss im Browser freigegeben werden.",
+        title: "přistup ke kamerje/mikrofonje trěbny",
+        permissionDenied: "přistup zapowědźeny",
+        content: "Přistup na kameru a mikrofon dyrbi so w browseru dopušćić dać.",
         firefoxContent:
-            'Bitte klicke auf "Diese Entscheidungen speichern" Schaltfläche um erneute Nachfragen nach der Freigabe in Firefox zu verhindern.',
-        refresh: "Aktualisieren",
-        continue: "Ohne Kamera fortfahren",
+            'Prošu zaklik na "Diese Entscheidungen speichern" šaltowanskej přestrjeni, zo by so wospjetnym naprašowanjam za dowolnosću w Firefox zadźěwało.',
+        refresh: "aktualizować",
+        continue: "bjez kamery pokročować",
         screen: {
             firefox: "/resources/help-setting-camera-permission/de-DE-chrome.png",
             chrome: "/resources/help-setting-camera-permission/de-DE-chrome.png",
         },
     },
     my: {
-        silentZone: "Stiller Bereich",
-        nameTag: "Sie",
+        silentZone: "ćichi wobłuk",
+        nameTag: "Wy",
     },
-    disable: "Schalten Sie Ihre Kamera aus",
+    disable: "hasńće swoju kameru",
 };
 
 export default camera;

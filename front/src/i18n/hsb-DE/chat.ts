@@ -2,13 +2,13 @@ import { DeepPartial } from "../../Utils/DeepPartial";
 import type { Translation } from "../i18n-types";
 
 const chat: DeepPartial<Translation["chat"]> = {
-    intro: "Hier ist dein Nachrichtenverlauf:",
-    enter: "Verfasse deine Nachricht...",
+    intro: "Tu je twój wotběh powěsćow:",
+    enter: "Spisaj swoju powěsć...",
     menu: {
-        visitCard: "Visitenkarte",
-        addFriend: "Freund*In hinzufügen",
+        visitCard: "Wizitka",
+        addFriend: "přećelku/a přidać",
     },
-    typing: "tippt...",
+    typing: "tipuje...",
 };
 
 export default chat;
