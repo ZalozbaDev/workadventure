@@ -3,11 +3,11 @@ import type { Translation } from "../i18n-types";
 
 const audio: DeepPartial<Translation["audio"]> = {
     manager: {
-        reduce: "Verringern Sie die Lautstärke des Audioplayers während des Sprechens",
-        allow: "Ton zulassen",
+        reduce: "znižće sylnosć zwuka awdioplayera za čas rěčenja",
+        allow: "zwuk dowolić",
     },
-    message: "Sprachnachricht",
-    disable: "Schalten Sie Ihr Mikrofon aus",
+    message: "rěčna powěsć",
+    disable: "hasńće swój mikrofon",
 };
 
 export default audio;

@@ -2,9 +2,9 @@ import { DeepPartial } from "../../Utils/DeepPartial";
 import type { Translation } from "../i18n-types";
 
 const trigger: DeepPartial<Translation["trigger"]> = {
-    cowebsite: "Drücke LEERTASTE oder tippe hier um die Webseite zu öffnen",
-    newTab: "Drücke LEERTASTE oder tippe hier um die Webseite in einem neuen Tab zu öffnen",
-    jitsiRoom: "Drücke LEERTASTE oder tippe hier um dem Jitsi Meet Raum beizutreten",
+    cowebsite: "Tłóč LEERTASTE abo tipuj tu, zo by webstronu wočinił",
+    newTab: "Tłóč LEERTASTE abo tipuj tu, zo by webstronu w nowym tabje wočinił",
+    jitsiRoom: "Tłóč LEERTASTE abo tipuj tu, zo by Jitsi Meet rumej přistupił",
 };
 
 export default trigger;

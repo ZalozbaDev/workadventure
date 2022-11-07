@@ -3,9 +3,9 @@ import type { Translation } from "../i18n-types";
 
 const companion: DeepPartial<Translation["companion"]> = {
     select: {
-        title: "Wähle einen Gefährten",
-        any: "Kein Gefährte",
-        continue: "Weiter",
+        title: "wuzwol sej towarša",
+        any: "žadyn towarš",
+        continue: "dale",
     },
 };
 
