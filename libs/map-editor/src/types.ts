@@ -1,18 +1,22 @@
-import { ITiledMapObject } from "@workadventure/tiled-map-type-guard";
-import { CreateAreaCommandConfig } from './Commands/Area/CreateAreaCommand';
-import { DeleteAreaCommandConfig } from './Commands/Area/DeleteAreaCommand';
-import { UpdateAreaCommandConfig } from './Commands/Area/UpdateAreaCommand';
+import type { ModifyAreaMessage } from "@workadventure/messages";
+import type { CreateAreaCommandConfig } from "./Commands/Area/CreateAreaCommand";
+import type { DeleteAreaCommandConfig } from "./Commands/Area/DeleteAreaCommand";
+import type { UpdateAreaCommandConfig } from "./Commands/Area/UpdateAreaCommand";
 
-export type ITiledMapRectangleObject = ITiledMapObject & { width: number; height: number };
+export type CommandConfig = UpdateAreaCommandConfig | DeleteAreaCommandConfig | CreateAreaCommandConfig;
 
-export type CommandConfig =
-    UpdateAreaCommandConfig |
-    DeleteAreaCommandConfig |
-    CreateAreaCommandConfig;
+export type AreaData = Required<ModifyAreaMessage> & { visible: boolean }; // move visible to messages also
 
 export enum AreaType {
     Static = "Static",
     Dynamic = "Dynamic",
+}
+
+export interface PredefinedPropertyData {
+    name: string;
+    description: string;
+    turnedOn: boolean;
+    additionalProperties: Record<string, string | number | boolean | object | undefined>;
 }
 
 export enum GameMapProperties {
@@ -58,5 +62,5 @@ export enum GameMapProperties {
     URL = "url",
     WRITABLE_BY = "writableBy",
     ZONE = "zone",
-    ZOOM_MARGIN = "zoom_margin",
+    ZOOM_MARGIN = "zoomMargin",
 }

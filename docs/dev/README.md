@@ -16,6 +16,7 @@ Check out the [contributing guide](../../CONTRIBUTING.md)
 
 - [WorkAdventure containers explained](communication-between-services.md)
 - [OpenID configuration](openid.md)
+- [Chat configuration](chat.md)
 
 ## Front documentation
 
@@ -26,4 +27,4 @@ Check out the [contributing guide](../../CONTRIBUTING.md)
 ## Pusher documentation
 
 The Pusher is exposing its HTTP API as "OpenAPI" endpoint.
-You can browse this API at `http://pusher.workadventure.localhost/swagger-ui/`.
+You can browse this API at `http://play.workadventure.localhost/swagger-ui/`.

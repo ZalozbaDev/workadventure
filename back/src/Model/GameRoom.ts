@@ -26,7 +26,7 @@ import { ProtobufUtils } from "../Model/Websocket/ProtobufUtils";
 import { RoomSocket, ZoneSocket } from "../RoomManager";
 import { Admin } from "../Model/Admin";
 import { adminApi } from "../Services/AdminApi";
-import { isMapDetailsData, MapDetailsData, MapThirdPartyData } from "../Messages/JsonMessages/MapDetailsData";
+import { isMapDetailsData, MapDetailsData, MapThirdPartyData, MapBbbData, MapJitsiData } from "@workadventure/messages";
 import { ITiledMap } from "@workadventure/tiled-map-type-guard";
 import { mapFetcher } from "../Services/MapFetcher";
 import { VariablesManager } from "../Services/VariablesManager";
@@ -46,7 +46,6 @@ import { LocalUrlError } from "../Services/LocalUrlError";
 import { emitErrorOnRoomSocket } from "../Services/MessageHelpers";
 import { VariableError } from "../Services/VariableError";
 import { ModeratorTagFinder } from "../Services/ModeratorTagFinder";
-import { MapBbbData, MapJitsiData } from "../Messages/JsonMessages/MapDetailsData";
 import { MapLoadingError } from "../Services/MapLoadingError";
 import { MucManager } from "../Services/MucManager";
 import { BrothersFinder } from "./BrothersFinder";
@@ -72,7 +71,7 @@ export class GameRoom implements BrothersFinder {
 
     private constructor(
         public readonly roomUrl: string,
-        private mapUrl: string,
+        private _mapUrl: string,
         private roomGroup: string | null,
         private readonly connectCallback: ConnectCallback,
         private readonly disconnectCallback: DisconnectCallback,
@@ -132,7 +131,7 @@ export class GameRoom implements BrothersFinder {
         );
 
         if (ENABLE_FEATURE_MAP_EDITOR) {
-            getMapStorageClient().ping(new PingMessage(), (err, res) => {
+            getMapStorageClient().ping(new PingMessage(), (err: unknown, res: unknown) => {
                 console.log(`==================================`);
                 console.log(err);
                 console.log(JSON.stringify(res));
@@ -144,7 +143,7 @@ export class GameRoom implements BrothersFinder {
             .then((mucManager) => {
                 mucManager.init(mapDetails).catch((err) => console.error(err));
             })
-            .catch((err) => console.error(err));
+            .catch((err) => console.error("Error get Muc Manager: ", err));
         return gameRoom;
     }
 
@@ -187,6 +186,7 @@ export class GameRoom implements BrothersFinder {
         const user = await User.create(
             this.nextUserId,
             joinRoomMessage.getUseruuid(),
+            joinRoomMessage.getUserjid(),
             joinRoomMessage.getIslogged(),
             joinRoomMessage.getIpaddress(),
             position,
@@ -225,14 +225,11 @@ export class GameRoom implements BrothersFinder {
     }
 
     public leave(user: User) {
-        const userObj = this.users.get(user.id);
-        if (userObj === undefined) {
+        if (!this.users.has(user.id)) {
             console.warn("User ", user.id, "does not belong to this game room! It should!");
         }
-        if (userObj !== undefined && typeof userObj.group !== "undefined") {
-            this.leaveGroup(userObj);
-        }
 
+        // If a user leaves the group, it cannot lead or follow anymore.
         if (user.hasFollowers()) {
             user.stopLeading();
         }
@@ -240,11 +237,21 @@ export class GameRoom implements BrothersFinder {
             user.following.delFollower(user);
         }
 
-        this.users.delete(user.id);
-        this.usersByUuid.delete(user.uuid);
+        if (user.group !== undefined) {
+            this.leaveGroup(user);
+        }
 
-        if (userObj !== undefined) {
-            this.positionNotifier.leave(userObj);
+        this.users.delete(user.id);
+        const set = this.usersByUuid.get(user.uuid);
+        if (set !== undefined) {
+            set.delete(user);
+            if (set.size === 0) {
+                this.usersByUuid.delete(user.uuid);
+            }
+        }
+
+        if (user !== undefined) {
+            this.positionNotifier.leave(user);
         }
 
         // Notify admins
@@ -415,6 +422,7 @@ export class GameRoom implements BrothersFinder {
         if (group === undefined) {
             throw new Error("The user is part of no group");
         }
+
         group.leave(user);
         if (group.isEmpty()) {
             group.destroy();
@@ -581,8 +589,8 @@ export class GameRoom implements BrothersFinder {
     public async incrementVersion(): Promise<number> {
         // Let's check if the mapUrl has changed
         const mapDetails = await GameRoom.getMapDetails(this.roomUrl);
-        if (this.mapUrl !== mapDetails.mapUrl) {
-            this.mapUrl = mapDetails.mapUrl;
+        if (this._mapUrl !== mapDetails.mapUrl) {
+            this._mapUrl = mapDetails.mapUrl;
             this.mapPromise = undefined;
             // Reset the variable manager
             this.variableManagerPromise = undefined;
@@ -663,7 +671,7 @@ export class GameRoom implements BrothersFinder {
      */
     private getMap(canLoadLocalUrl = false): Promise<ITiledMap> {
         if (!this.mapPromise) {
-            this.mapPromise = mapFetcher.fetchMap(this.mapUrl, canLoadLocalUrl);
+            this.mapPromise = mapFetcher.fetchMap(this._mapUrl, canLoadLocalUrl);
         }
 
         return this.mapPromise;
@@ -878,10 +886,10 @@ export class GameRoom implements BrothersFinder {
     private mucManagerLastLoad: Date | undefined;
 
     private getMucManager(): Promise<MucManager> {
-        const lastMapUrl = this.mapUrl;
+        const lastMapUrl = this._mapUrl;
         if (!this.mucManagerPromise) {
             // For localhost maps
-            this.mapUrl = this.mapUrl.replace("http://maps.workadventure.localhost", "http://maps:80");
+            this._mapUrl = this._mapUrl.replace("http://maps.workadventure.localhost", "http://maps:80");
             this.mucManagerLastLoad = new Date();
             this.mucManagerPromise = this.getMap(true)
                 .then((map) => {
@@ -919,7 +927,21 @@ export class GameRoom implements BrothersFinder {
                     return new MucManager(this.roomUrl, null);
                 });
         }
-        this.mapUrl = lastMapUrl;
+        this._mapUrl = lastMapUrl;
         return this.mucManagerPromise;
+    }
+
+    public sendSubMessageToRoom(subMessage: SubToPusherRoomMessage) {
+        const batchMessage = new BatchToPusherRoomMessage();
+        batchMessage.addPayload(subMessage);
+
+        // Dispatch the message on the room listeners
+        for (const socket of this.roomListeners) {
+            socket.write(batchMessage);
+        }
+    }
+
+    get mapUrl(): string {
+        return this._mapUrl;
     }
 }
