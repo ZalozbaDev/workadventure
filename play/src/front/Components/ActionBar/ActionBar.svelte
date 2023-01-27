@@ -50,7 +50,6 @@
         addClassicButtonActionBarEvent,
         addActionButtonActionBarEvent,
     } from "../../Stores/MenuStore";
-    import type { Emoji } from "../../Stores/EmoteStore";
     import {
         emoteDataStore,
         emoteDataStoreLoading,
@@ -72,9 +71,11 @@
     import { peerStore } from "../../Stores/PeerStore";
     import { StringUtils } from "../../Utils/StringUtils";
     import Tooltip from "../Util/Tooltip.svelte";
+    import { gameSceneIsLoadedStore } from "../../Stores/GameSceneStore";
     import { modalIframeStore, modalVisibilityStore } from "../../Stores/ModalStore";
     import { userHasAccessToBackOfficeStore } from "../../Stores/GameStore";
     import { AddButtonActionBarEvent } from "../../Api/Events/Ui/ButtonActionBarEvent";
+    import { Emoji } from "../../Stores/Utils/emojiSchema";
 
     const menuImg = gameManager.currentStartedRoom?.miniLogo ?? WorkAdventureImg;
 
@@ -698,13 +699,14 @@
                         <img draggable="false" src={menuImg} style="padding: 2px" alt={$LL.menu.icon.open.menu()} />
                     </button>
                 </div>
-                {#if gameManager.getCurrentGameScene().isMapEditorEnabled()}
+                {#if $gameSceneIsLoadedStore && gameManager.getCurrentGameScene().isMapEditorEnabled()}
                     <div
                         on:dragstart|preventDefault={noDrag}
                         on:click={toggleMapEditorMode}
                         class="bottom-action-button"
                     >
-                        <button id="mapEditorIcon" class:border-top-light={$menuVisiblilityStore}>
+                        <Tooltip text={$LL.actionbar.mapEditor()} />
+                        <button id="mapEditorIcon" class:border-top-light={$mapEditorModeStore}>
                             <img draggable="false" src={logoRegister} style="padding: 2px" alt="toggle-map-editor" />
                         </button>
                     </div>
@@ -833,14 +835,9 @@
                             class="emoji"
                             class:focus={$emoteMenuStore && $emoteMenuSubCurrentEmojiSelectedStore === key}
                         >
-                            <img
-                                class="emoji"
-                                style="padding: 2px"
-                                draggable="false"
-                                alt={$emoteDataStore.get(key)?.unicode}
-                                id={`icon-${$emoteDataStore.get(key)?.name}`}
-                                src={$emoteDataStore.get(key)?.url}
-                            />
+                            <span class="emoji" style="margin:auto" id={`icon-${$emoteDataStore.get(key)?.name}`}>
+                                {$emoteDataStore.get(key)?.emoji}
+                            </span>
                             {#if !isMobile}
                                 <span class="tw-text-white">{key}</span>
                             {/if}

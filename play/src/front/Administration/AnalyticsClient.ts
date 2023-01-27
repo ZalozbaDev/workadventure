@@ -1,6 +1,6 @@
 import { POSTHOG_API_KEY, POSTHOG_URL } from "../Enum/EnvironmentVariable";
-import type { Emoji } from "../Stores/EmoteStore";
 import type { PostHog } from "posthog-js";
+import { Emoji } from "../Stores/Utils/emojiSchema";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare let window: any;
 
@@ -367,6 +367,14 @@ class AnalyticsClient {
         this.posthogPromise
             ?.then((posthog) => {
                 posthog.capture("wa_menu_globalmessage");
+            })
+            .catch((e) => console.error(e));
+    }
+
+    reportIssue(): void {
+        this.posthogPromise
+            ?.then((posthog) => {
+                posthog.capture("wa_menu_report");
             })
             .catch((e) => console.error(e));
     }
