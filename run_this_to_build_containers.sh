@@ -1,28 +1,28 @@
 #!/bin/bash
 
 echo "#########################################################"
-echo "################ FRONT ##################################"
+echo "################ PLAY ###################################"
 echo "#########################################################"
 
-docker buildx build -t workadventure-front-custom -f front/Dockerfile .
+docker buildx build -t workadventure-play-custom -f play/Dockerfile .
 
 echo "#########################################################"
 echo "################ PUSHER #################################"
 echo "#########################################################"
 
-docker buildx build -t workadventure-pusher-custom -f pusher/Dockerfile .
+#docker buildx build -t workadventure-pusher-custom -f pusher/Dockerfile .
 
 echo "#########################################################"
 echo "################ BACK ###################################"
 echo "#########################################################"
 
-docker buildx build -t workadventure-back-custom -f back/Dockerfile .
+#docker buildx build -t workadventure-back-custom -f back/Dockerfile .
 
 echo "#########################################################"
 echo "################ CHAT ###################################"
 echo "#########################################################"
 
-docker buildx build -t workadventure-chat-custom -f front/chat/Dockerfile .
+#docker buildx build -t workadventure-chat-custom -f front/chat/Dockerfile .
 
 
 
