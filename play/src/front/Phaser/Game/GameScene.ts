@@ -135,7 +135,6 @@ import {
     _newChatMessageSubject,
     _newChatMessageWritingStatusSubject,
 } from "../../Stores/ChatStore";
-import structuredClone from "@ungap/structured-clone";
 import type {
     ITiledMap,
     ITiledMapLayer,
@@ -152,8 +151,12 @@ import { GameMapFrontWrapper } from "./GameMap/GameMapFrontWrapper";
 import type { GameStateEvent } from "../../Api/Events/GameStateEvent";
 import { modalVisibilityStore } from "../../Stores/ModalStore";
 import { currentPlayerWokaStore } from "../../Stores/CurrentPlayerWokaStore";
-import { mapEditorModeStore, mapEntitiesPrefabsStore } from "../../Stores/MapEditorStore";
+import { mapEditorModeStore } from "../../Stores/MapEditorStore";
+import { refreshPromptStore } from "../../Stores/RefreshPromptStore";
 import { debugAddPlayer, debugRemovePlayer } from "../../Utils/Debuggers";
+import { EntitiesCollectionsManager } from "./MapEditor/EntitiesCollectionsManager";
+import { checkCoturnServer } from "../../Components/Video/utils";
+import { faviconManager } from "./../../WebRtc/FaviconManager";
 
 export interface GameSceneInitInterface {
     reconnecting: boolean;
@@ -205,6 +208,7 @@ export class GameScene extends DirtyScene {
     private embedScreenLayoutStoreUnsubscriber!: Unsubscriber;
     private availabilityStatusStoreUnsubscriber!: Unsubscriber;
     private mapEditorModeStoreUnsubscriber!: Unsubscriber;
+    private refreshPromptStoreStoreUnsubscriber!: Unsubscriber;
 
     private modalVisibilityStoreUnsubscriber!: Unsubscriber;
 
@@ -236,6 +240,7 @@ export class GameScene extends DirtyScene {
     private emoteManager!: EmoteManager;
     private cameraManager!: CameraManager;
     private mapEditorModeManager!: MapEditorModeManager;
+    private entitiesCollectionsManager!: EntitiesCollectionsManager;
     private pathfindingManager!: PathfindingManager;
     private activatablesManager!: ActivatablesManager;
     private preloading = true;
@@ -271,9 +276,11 @@ export class GameScene extends DirtyScene {
         this.MapUrlFile = MapUrlFile;
         this.roomUrl = room.key;
 
+        this.entitiesCollectionsManager = new EntitiesCollectionsManager();
+
         if (this.room.entityCollectionsUrls) {
             for (const url of this.room.entityCollectionsUrls) {
-                mapEntitiesPrefabsStore.loadCollections(url).catch((reason) => {
+                this.entitiesCollectionsManager.loadCollections(url).catch((reason) => {
                     console.warn(reason);
                 });
             }
@@ -420,6 +427,11 @@ export class GameScene extends DirtyScene {
 
         const url = this.MapUrlFile.substring(0, this.MapUrlFile.lastIndexOf("/"));
         this.mapFile.tilesets.forEach((tileset) => {
+            if ("source" in tileset) {
+                throw new Error(
+                    `Tilesets must be embedded in a map. The tileset "${tileset.source}" must be embedded in the Tiled map "${this.MapUrlFile}".`
+                );
+            }
             if (typeof tileset.name === "undefined" || typeof tileset.image === "undefined") {
                 console.warn("Don't know how to handle tileset ", tileset);
                 return;
@@ -540,6 +552,11 @@ export class GameScene extends DirtyScene {
         this.Map = this.add.tilemap(this.MapUrlFile);
         const mapDirUrl = this.MapUrlFile.substring(0, this.MapUrlFile.lastIndexOf("/"));
         this.mapFile.tilesets.forEach((tileset: ITiledMapTileset) => {
+            if ("source" in tileset) {
+                throw new Error(
+                    `Tilesets must be embedded in a map. The tileset "${tileset.source}" must be embedded in the Tiled map "${this.MapUrlFile}".`
+                );
+            }
             this.Terrains.push(
                 this.Map.addTilesetImage(
                     tileset.name,
@@ -812,8 +829,9 @@ export class GameScene extends DirtyScene {
             .then((onConnect: OnConnectInterface) => {
                 this.connection = onConnect.connection;
                 this.mapEditorModeManager?.subscribeToRoomConnection(this.connection);
-                if (onConnect.room.commandsToApply) {
-                    this.mapEditorModeManager?.updateMapToNewest(onConnect.room.commandsToApply);
+                const commandsToApply = onConnect.room.commandsToApply;
+                if (commandsToApply) {
+                    this.mapEditorModeManager?.updateMapToNewest(commandsToApply);
                 }
 
                 this.subscribeToStores();
@@ -868,6 +886,17 @@ export class GameScene extends DirtyScene {
                         type: "removeRemotePlayer",
                         data: message.userId,
                     });
+                });
+
+                this.connection.refreshRoomMessageStream.subscribe((message) => {
+                    if (message.comment) {
+                        refreshPromptStore.set({
+                            comment: message.comment,
+                            timeToRefresh: message.timeToRefresh,
+                        });
+                    } else {
+                        window.location.reload();
+                    }
                 });
 
                 this.connection.playerDetailsUpdatedMessageStream.subscribe((message) => {
@@ -1006,6 +1035,12 @@ export class GameScene extends DirtyScene {
                     this.room.group ?? undefined
                 );
 
+                this.connection.xmppSettingsMessageStream.subscribe((xmppSettingsMessage) => {
+                    if (xmppSettingsMessage) {
+                        iframeListener.sendXmppSettingsToChatIframe(xmppSettingsMessage);
+                    }
+                });
+
                 this.connectionAnswerPromiseDeferred.resolve(onConnect.room);
                 // Analyze tags to find if we are admin. If yes, show console.
 
@@ -1043,12 +1078,24 @@ export class GameScene extends DirtyScene {
 
                 this.emoteManager = new EmoteManager(this, this.connection);
 
+                // Check WebRtc connection
+                if (onConnect.room.webrtcUserName && onConnect.room.webrtcPassword) {
+                    try {
+                        checkCoturnServer({
+                            userId: onConnect.connection.getUserId(),
+                            webRtcUser: onConnect.room.webrtcUserName,
+                            webRtcPassword: onConnect.room.webrtcPassword,
+                        });
+                    } catch (err) {
+                        console.error("Check coturn server exception: ", err);
+                    }
+                }
+
                 // Get position from UUID only after the connection to the pusher is established
                 this.tryMovePlayerWithMoveToUserParameter();
+                gameSceneIsLoadedStore.set(true);
             })
             .catch((e) => console.error(e));
-
-        gameSceneIsLoadedStore.set(true);
     }
 
     private subscribeToStores(): void {
@@ -1060,7 +1107,8 @@ export class GameScene extends DirtyScene {
             this.emoteMenuUnsubscriber != undefined ||
             this.followUsersColorStoreUnsubscriber != undefined ||
             this.peerStoreUnsubscriber != undefined ||
-            this.mapEditorModeStoreUnsubscriber != undefined
+            this.mapEditorModeStoreUnsubscriber != undefined ||
+            this.refreshPromptStoreStoreUnsubscriber != undefined
         ) {
             console.error(
                 "subscribeToStores => Check all subscriber undefined ",
@@ -1071,7 +1119,8 @@ export class GameScene extends DirtyScene {
                 this.emoteMenuUnsubscriber,
                 this.followUsersColorStoreUnsubscriber,
                 this.peerStoreUnsubscriber,
-                this.mapEditorModeStoreUnsubscriber
+                this.mapEditorModeStoreUnsubscriber,
+                this.refreshPromptStoreStoreUnsubscriber
             );
 
             throw new Error("One store is already subscribed.");
@@ -1182,9 +1231,12 @@ export class GameScene extends DirtyScene {
 
             if (newPeerNumber > oldPeersNumber) {
                 this.playSound("audio-webrtc-in");
+                faviconManager.pushNotificationFavicon();
             } else if (newPeerNumber < oldPeersNumber) {
                 this.playSound("audio-webrtc-out");
+                faviconManager.pushOriginalFavicon();
             }
+
             if (newPeerNumber > 0) {
                 if (!this.localVolumeStoreUnsubscriber) {
                     this.localVolumeStoreUnsubscriber = localVolumeStore.subscribe((spectrum) => {
@@ -1228,6 +1280,14 @@ export class GameScene extends DirtyScene {
                 this.gameMapFrontWrapper.getEntitiesManager().makeAllEntitiesInteractive(true);
             }
             this.markDirty();
+        });
+
+        this.refreshPromptStoreStoreUnsubscriber = refreshPromptStore.subscribe((comment) => {
+            if (comment) {
+                this.userInputManager.disableControls();
+            } else {
+                this.userInputManager.restoreControls();
+            }
         });
     }
 
@@ -1784,7 +1844,12 @@ ${escapedMessage}
                 //Initialise the firstgid to 1 because if there is no tileset in the tilemap, the firstgid will be 1
                 let newFirstgid = 1;
                 const lastTileset = this.mapFile.tilesets[this.mapFile.tilesets.length - 1];
-                if (lastTileset && lastTileset.firstgid !== undefined && lastTileset.tilecount !== undefined) {
+                if (
+                    lastTileset &&
+                    lastTileset.firstgid !== undefined &&
+                    "tilecount" in lastTileset &&
+                    lastTileset.tilecount !== undefined
+                ) {
                     //If there is at least one tileset in the tilemap then calculate the firstgid of the new tileset
                     newFirstgid = lastTileset.firstgid + lastTileset.tilecount;
                 }
@@ -2058,6 +2123,8 @@ ${escapedMessage}
                 iframeListener.unregisterScript(script);
             }
         }
+
+        iframeListener.cleanup();
         uiWebsiteManager.closeAll();
         followUsersStore.stopFollowing();
 
@@ -2075,6 +2142,7 @@ ${escapedMessage}
         this.mapEditorModeManager?.destroy();
         this.peerStoreUnsubscriber?.();
         this.mapEditorModeStoreUnsubscriber?.();
+        this.refreshPromptStoreStoreUnsubscriber?.();
         this.emoteUnsubscriber?.();
         this.emoteMenuUnsubscriber?.();
         this.followUsersColorStoreUnsubscriber?.();
@@ -2854,15 +2922,15 @@ ${escapedMessage}
         return this.mapEditorModeManager;
     }
 
+    public getEntitiesCollectionsManager(): EntitiesCollectionsManager {
+        return this.entitiesCollectionsManager;
+    }
+
     public getPathfindingManager(): PathfindingManager {
         return this.pathfindingManager;
     }
 
     public getActivatablesManager(): ActivatablesManager {
         return this.activatablesManager;
-    }
-
-    public isMapEditorEnabled(): boolean {
-        return ENABLE_FEATURE_MAP_EDITOR && connectionManager.currentRoom?.canEditMap === true;
     }
 }

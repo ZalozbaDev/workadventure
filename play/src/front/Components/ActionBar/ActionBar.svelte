@@ -49,6 +49,7 @@
         additionnalButtonsMenu,
         addClassicButtonActionBarEvent,
         addActionButtonActionBarEvent,
+        mapEditorActivated,
     } from "../../Stores/MenuStore";
     import {
         emoteDataStore,
@@ -71,10 +72,10 @@
     import { peerStore } from "../../Stores/PeerStore";
     import { StringUtils } from "../../Utils/StringUtils";
     import Tooltip from "../Util/Tooltip.svelte";
-    import { gameSceneIsLoadedStore } from "../../Stores/GameSceneStore";
     import { modalIframeStore, modalVisibilityStore } from "../../Stores/ModalStore";
     import { userHasAccessToBackOfficeStore } from "../../Stores/GameStore";
     import { AddButtonActionBarEvent } from "../../Api/Events/Ui/ButtonActionBarEvent";
+    import { localUserStore } from "../../Connexion/LocalUserStore";
     import { Emoji } from "../../Stores/Utils/emojiSchema";
 
     const menuImg = gameManager.currentStartedRoom?.miniLogo ?? WorkAdventureImg;
@@ -325,6 +326,7 @@
     }
 
     function selectSpeaker(deviceId: string) {
+        localUserStore.setSpeakerDeviceId(deviceId);
         speakerSelectedStore.set(deviceId);
     }
 
@@ -699,7 +701,7 @@
                         <img draggable="false" src={menuImg} style="padding: 2px" alt={$LL.menu.icon.open.menu()} />
                     </button>
                 </div>
-                {#if $gameSceneIsLoadedStore && gameManager.getCurrentGameScene().isMapEditorEnabled()}
+                {#if $mapEditorActivated}
                     <div
                         on:dragstart|preventDefault={noDrag}
                         on:click={toggleMapEditorMode}
@@ -720,7 +722,7 @@
                     >
                         <Tooltip text={$LL.actionbar.bo()} />
 
-                        <button id="mapEditorIcon">
+                        <button id="backOfficeIcon">
                             <img draggable="false" src={hammerImg} style="padding: 2px" alt="toggle-map-editor" />
                         </button>
                     </div>

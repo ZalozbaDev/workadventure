@@ -1,20 +1,20 @@
 <script lang="ts">
     import LL from "../../../i18n/i18n-svelte";
     import type { EntityPrefab } from "@workadventure/map-editor";
-    import { onDestroy } from "svelte/internal";
     import { onMount } from "svelte";
     import {
         mapEditorSelectedEntityPrefabStore,
-        mapEntitiesPrefabsStore,
         onMapEditorInputFocus,
         onMapEditorInputUnfocus,
     } from "../../Stores/MapEditorStore";
+    import { gameManager } from "../../Phaser/Game/GameManager";
 
-    let pickedItem: EntityPrefab = $mapEntitiesPrefabsStore[0];
+    const entitiesCollectionsManager = gameManager.getCurrentGameScene().getEntitiesCollectionsManager();
+
+    let pickedItem: EntityPrefab | undefined = undefined;
     let pickedVariant: EntityPrefab | undefined = undefined;
     let currentColor: string;
 
-    // let currentMapObjects: EntityPrefab[] = [];
     let rootItem: EntityPrefab[] = []; //A sample of each object
     let itemVariants: EntityPrefab[] = [];
     let currentVariants: EntityPrefab[] = [];
@@ -24,10 +24,11 @@
 
     let selectedTag = "";
 
-    let tagsStore = mapEntitiesPrefabsStore.tagsStore;
+    let tags = entitiesCollectionsManager.getTags();
 
     onMount(() => {
-        mapEntitiesPrefabsStore.setNameFilter(filter);
+        entitiesCollectionsManager.setNameFilter(filter);
+        updateVisiblePrefabs();
     });
 
     function onPickItemVariant(variant: EntityPrefab) {
@@ -37,13 +38,18 @@
 
     function onPickItem(item: EntityPrefab) {
         pickedItem = item;
-        itemVariants = $mapEntitiesPrefabsStore.filter((item: EntityPrefab) => item.name == pickedItem.name);
+        if (!pickedItem) {
+            return;
+        }
+        itemVariants = entitiesCollectionsManager
+            .getEntitiesPrefabs()
+            .filter((item: EntityPrefab) => item.name == pickedItem?.name);
         itemVariants = itemVariants.sort(
             (a, b) =>
                 a.direction.localeCompare(b.direction) +
                 a.color.localeCompare(b.color) * 10 +
-                (a.color === pickedItem.color ? -100 : 0) +
-                (b.color === pickedItem.color ? 100 : 0)
+                (a.color === pickedItem?.color ? -100 : 0) +
+                (b.color === pickedItem?.color ? 100 : 0)
         );
         let variantColorSet = new Set<string>();
         itemVariants.forEach((item) => variantColorSet.add(item.color));
@@ -74,35 +80,28 @@
     }
 
     function onFilterChange() {
-        mapEntitiesPrefabsStore.setNameFilter(filter);
+        entitiesCollectionsManager.setNameFilter(filter);
+        updateVisiblePrefabs();
     }
 
-    onPickItem(pickedItem);
-
-    let mapObjectStoreUnsubscriber = mapEntitiesPrefabsStore.subscribe((newMap: EntityPrefab[]) => {
-        // currentMapObjects = newMap;
+    function updateVisiblePrefabs() {
+        const prefabs = entitiesCollectionsManager.getEntitiesPrefabs();
         let tags = new Set<string>();
         let uniqId = new Set<string>();
         rootItem = [];
-        for (let mapObject of newMap) {
-            mapObject.tags.forEach((v: string) => tags.add(v));
-            if (!uniqId.has(mapObject.name)) {
-                uniqId.add(mapObject.name);
-                rootItem.push(mapObject);
+        for (let entityPrefab of prefabs) {
+            entityPrefab.tags.forEach((v: string) => tags.add(v));
+            if (!uniqId.has(entityPrefab.name)) {
+                uniqId.add(entityPrefab.name);
+                rootItem.push(entityPrefab);
             }
         }
 
-        if (!rootItem.includes(pickedItem) && rootItem.length != 0) {
+        if (pickedItem && !rootItem.includes(pickedItem) && rootItem.length != 0) {
             //if the item is not available due to filtering, we change it
             onPickItem(rootItem[0]);
         }
-    });
-
-    onDestroy(() => {
-        if (mapObjectStoreUnsubscriber !== undefined) {
-            mapObjectStoreUnsubscriber();
-        }
-    });
+    }
 </script>
 
 <div class="item-picker">
@@ -117,16 +116,16 @@
             placeholder={$LL.mapEditor.entityEditor.itemPicker.searchPlaceholder()}
         />
         <select class="tag-selector" bind:value={selectedTag} on:change={() => onTagPick()}>
-            {#each $tagsStore as tag}
+            {#each tags as tag}
                 <option>{tag}</option>
             {/each}
         </select>
     </div>
-    <div class="item-name">{pickedItem.name}</div>
+    <div class="item-name">{pickedItem?.name ?? "no entity selected"}</div>
     <div class="item-picker-container">
         {#each rootItem as item (item.name)}
             <div
-                class="pickable-item {item.name === pickedItem.name ? 'active' : ''}"
+                class="pickable-item {item.name === pickedItem?.name ? 'active' : ''}"
                 on:click={() => onPickItem(item)}
             >
                 <img class="item-image" src={item.imagePath} alt={item.name} />

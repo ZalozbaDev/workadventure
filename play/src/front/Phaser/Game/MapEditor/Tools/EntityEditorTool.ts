@@ -7,7 +7,6 @@ import {
     mapEditorSelectedEntityPrefabStore,
     MapEntityEditorMode,
     mapEntityEditorModeStore,
-    mapEntitiesPrefabsStore,
 } from "../../../../Stores/MapEditorStore";
 import { Entity } from "../../../ECS/Entity";
 import { TexturesHelper } from "../../../Helpers/TexturesHelper";
@@ -104,7 +103,9 @@ export class EntityEditorTool extends MapEditorTool {
         switch (editMapCommandMessage.editMapMessage?.message?.$case) {
             case "createEntityMessage": {
                 const data = editMapCommandMessage.editMapMessage?.message.createEntityMessage;
-                const entityPrefab = mapEntitiesPrefabsStore.getEntityPrefab(data.collectionName, data.prefabId);
+                const entityPrefab = this.scene
+                    .getEntitiesCollectionsManager()
+                    .getEntityPrefab(data.collectionName, data.prefabId);
 
                 if (!entityPrefab) {
                     console.warn(`NO PREFAB WAS FOUND FOR: ${data.collectionName} ${data.prefabId}`);
@@ -113,29 +114,29 @@ export class EntityEditorTool extends MapEditorTool {
 
                 TexturesHelper.loadEntityImage(this.scene, entityPrefab.imagePath, entityPrefab.imagePath)
                     .then(() => {
-                        const entityData: EntityData = {
-                            x: data.x,
-                            y: data.y,
-                            id: data.id,
-                            prefab: entityPrefab,
-                            properties: {
-                                customProperties: {},
-                            },
-                        };
-                        // execute command locally
-                        this.mapEditorModeManager.executeCommand(
-                            {
-                                type: "CreateEntityCommand",
-                                entityData,
-                            },
-                            false,
-                            false,
-                            commandId
-                        );
+                        this.entitiesManager.getEntities().get(data.id)?.setTexture(entityPrefab.imagePath);
                     })
                     .catch((reason) => {
                         console.warn(reason);
                     });
+
+                const entityData: EntityData = {
+                    x: data.x,
+                    y: data.y,
+                    id: data.id,
+                    prefab: entityPrefab,
+                    properties: {},
+                };
+                // execute command locally
+                this.mapEditorModeManager.executeCommand(
+                    {
+                        type: "CreateEntityCommand",
+                        entityData,
+                    },
+                    false,
+                    false,
+                    commandId
+                );
                 break;
             }
             case "deleteEntityMessage": {
@@ -172,7 +173,7 @@ export class EntityEditorTool extends MapEditorTool {
         if (!entity) {
             return;
         }
-        const { x: oldX, y: oldY } = entity.getOldPositionTopLeft();
+        const { x: oldX, y: oldY } = entity.getOldPosition();
         entity?.updateEntity(config);
         this.updateCollisionGrid(entity, oldX, oldY);
         this.scene.markDirty();
@@ -182,7 +183,7 @@ export class EntityEditorTool extends MapEditorTool {
         this.entitiesManager.addEntity(structuredClone(config));
     }
 
-    private handleEntityDeletion(id: number): void {
+    private handleEntityDeletion(id: string): void {
         this.entitiesManager.deleteEntity(id);
     }
 
@@ -191,9 +192,7 @@ export class EntityEditorTool extends MapEditorTool {
         const grid = entity.getCollisionGrid();
         if (reversedGrid && grid) {
             this.scene.getGameMapFrontWrapper().modifyToCollisionsLayer(oldX, oldY, "0", reversedGrid);
-            this.scene
-                .getGameMapFrontWrapper()
-                .modifyToCollisionsLayer(entity.getTopLeft().x, entity.getTopLeft().y, "0", grid);
+            this.scene.getGameMapFrontWrapper().modifyToCollisionsLayer(entity.x, entity.y, "0", grid);
         }
     }
 
@@ -341,9 +340,9 @@ export class EntityEditorTool extends MapEditorTool {
         }
 
         const entityData: EntityData = {
-            x,
-            y,
-            id: this.gameMapEntities.getNextEntityId(),
+            x: x - this.entityPrefabPreview.displayWidth * 0.5,
+            y: y - this.entityPrefabPreview.displayHeight * 0.5,
+            id: crypto.randomUUID(),
             prefab: this.entityPrefab,
             properties: {},
         };

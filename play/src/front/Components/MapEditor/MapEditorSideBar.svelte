@@ -4,22 +4,34 @@
     import { mapEditorSelectedToolStore } from "../../Stores/MapEditorStore";
     import { gameManager } from "../../Phaser/Game/GameManager";
     import AreaToolImg from "../images/icon-tool-area.png";
-    import FloorToolImg from "../images/icon-tool-floor.png";
+    // import FloorToolImg from "../images/icon-tool-floor.png";
     import EntityToolImg from "../images/icon-tool-entity.svg";
     import ZoomInImg from "../images/zoom-in-icons.svg";
     import ZoomOutImg from "../images/zoom-out-icons.svg";
+    import Tooltip from "../Util/Tooltip.svelte";
+    import { ENABLE_MAP_EDITOR_AREAS_TOOL } from "../../Enum/EnvironmentVariable";
+    import { LocalizedString } from "typesafe-i18n";
 
     const gameScene = gameManager.getCurrentGameScene();
 
-    let availableTools = [
-        { toolName: EditorToolName.AreaEditor, img: AreaToolImg, tooltiptext: $LL.mapEditor.sideBar.areaEditor() },
+    const availableTools: { toolName: EditorToolName; img: string; tooltiptext: LocalizedString }[] = [];
+
+    if (ENABLE_MAP_EDITOR_AREAS_TOOL) {
+        availableTools.push({
+            toolName: EditorToolName.AreaEditor,
+            img: AreaToolImg,
+            tooltiptext: $LL.mapEditor.sideBar.areaEditor(),
+        });
+    }
+    availableTools.push(
         {
             toolName: EditorToolName.EntityEditor,
             img: EntityToolImg,
             tooltiptext: $LL.mapEditor.sideBar.entityEditor(),
-        },
-        { toolName: EditorToolName.FloorEditor, img: FloorToolImg, tooltiptext: $LL.mapEditor.sideBar.tileEditor() },
-    ];
+        }
+        // NOTE: Hide it untill FloorEditing is done
+        // { toolName: EditorToolName.FloorEditor, img: FloorToolImg, tooltiptext: $LL.mapEditor.sideBar.tileEditor() }
+    );
 
     function switchTool(newTool: EditorToolName) {
         console.log(JSON.stringify($LL));
@@ -39,25 +51,25 @@
     <!--put a section to avoid lower div to be affected by some css-->
     <div class="side-bar">
         <div class="tool-button">
-            <!-- <Tooltip text={$LL.mapEditor.sideBar.zoomIn()} /> --><!--do not work yet-->
             <button on:click|preventDefault={zoomIn} type="button"
                 ><img src={ZoomInImg} alt={$LL.mapEditor.sideBar.zoomIn()} /></button
             >
+            <Tooltip text={$LL.mapEditor.sideBar.zoomIn()} rightPosition="true" />
         </div>
         <div class="tool-button">
-            <!-- <Tooltip text={$LL.mapEditor.sideBar.zoomOut()} /> --><!--do not work yet-->
             <button on:click|preventDefault={zoomOut} type="button"
                 ><img src={ZoomOutImg} alt={$LL.mapEditor.sideBar.zoomOut()} /></button
             >
+            <Tooltip text={$LL.mapEditor.sideBar.zoomOut()} rightPosition="true" />
         </div>
         {#each availableTools as tool (tool.toolName)}
             <div class="tool-button">
-                <!-- <Tooltip text={tool.tooltiptext} /> --><!--do not work yet-->
                 <button
                     class={tool.toolName == $mapEditorSelectedToolStore ? "active" : ""}
                     on:click|preventDefault={() => switchTool(tool.toolName)}
                     type="button"><img src={tool.img} alt="open tool {tool.toolName}" /></button
                 >
+                <Tooltip text={tool.tooltiptext} rightPosition="true" />
             </div>
         {/each}
     </div>

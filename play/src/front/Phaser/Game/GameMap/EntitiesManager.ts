@@ -24,7 +24,7 @@ export class EntitiesManager extends Phaser.Events.EventEmitter {
 
     private shiftKey: Phaser.Input.Keyboard.Key;
 
-    private entities: Map<number, Entity>;
+    private entities: Map<string, Entity>;
     private activatableEntities: Entity[];
 
     private properties: Map<string, string | boolean | number>;
@@ -40,7 +40,7 @@ export class EntitiesManager extends Phaser.Events.EventEmitter {
         this.scene = scene;
         this.gameMapFrontWrapper = gameMapFrontWrapper;
         this.shiftKey = this.scene.input.keyboard.addKey("SHIFT");
-        this.entities = new Map<number, Entity>();
+        this.entities = new Map<string, Entity>();
         this.activatableEntities = [];
         this.properties = new Map<string, string | boolean | number>();
 
@@ -58,7 +58,12 @@ export class EntitiesManager extends Phaser.Events.EventEmitter {
             `${imagePathPrefix ?? ""}${data.prefab.imagePath}`
         )
             .then(() => {
-                this.entities.get(data.id)?.setTexture(data.prefab.imagePath);
+                const entity = this.entities.get(data.id);
+                if (entity) {
+                    entity
+                        .setTexture(data.prefab.imagePath)
+                        .setDepth(entity.y + entity.displayHeight + (entity.getEntityData().prefab.depthOffset ?? 0));
+                }
             })
             .catch((e) => console.error(e));
         const entity = new Entity(this.scene, data);
@@ -67,12 +72,7 @@ export class EntitiesManager extends Phaser.Events.EventEmitter {
 
         const colGrid = entity.getCollisionGrid();
         if (colGrid) {
-            this.gameMapFrontWrapper.modifyToCollisionsLayer(
-                entity.getTopLeft().x,
-                entity.getTopLeft().y,
-                "0",
-                colGrid
-            );
+            this.gameMapFrontWrapper.modifyToCollisionsLayer(entity.x, entity.y, "0", colGrid);
         }
 
         this.entities.set(data.id, entity);
@@ -82,7 +82,7 @@ export class EntitiesManager extends Phaser.Events.EventEmitter {
         this.scene.markDirty();
     }
 
-    public deleteEntity(id: number): boolean {
+    public deleteEntity(id: string): boolean {
         const entity = this.entities.get(id);
         if (!entity) {
             return false;
@@ -97,12 +97,7 @@ export class EntitiesManager extends Phaser.Events.EventEmitter {
 
         const colGrid = entity.getReversedCollisionGrid();
         if (colGrid) {
-            this.gameMapFrontWrapper.modifyToCollisionsLayer(
-                entity.getTopLeft().x,
-                entity.getTopLeft().y,
-                "0",
-                colGrid
-            );
+            this.gameMapFrontWrapper.modifyToCollisionsLayer(entity.x, entity.y, "0", colGrid);
         }
         entity.destroy();
         this.scene.markDirty();
@@ -163,27 +158,26 @@ export class EntitiesManager extends Phaser.Events.EventEmitter {
             if (get(mapEditorModeStore) && get(mapEntityEditorModeStore) === MapEntityEditorMode.EditMode) {
                 const collisitonGrid = entity.getEntityData().prefab.collisionGrid;
                 const depthOffset = entity.getEntityData().prefab.depthOffset ?? 0;
-                const offsets = this.getEntityAlignWithGridOffset(entity);
                 const tileDim = this.scene.getGameMapFrontWrapper().getTileDimensions();
                 entity.x =
                     collisitonGrid || this.shiftKey.isDown
-                        ? Math.floor(dragX / tileDim.width) * tileDim.width + offsets.x
+                        ? Math.floor(dragX / tileDim.width) * tileDim.width
                         : Math.floor(dragX);
                 entity.y =
                     collisitonGrid || this.shiftKey.isDown
-                        ? Math.floor(dragY / tileDim.height) * tileDim.height + offsets.y
+                        ? Math.floor(dragY / tileDim.height) * tileDim.height
                         : Math.floor(dragY);
-                entity.setDepth(entity.y + entity.displayHeight * 0.5 + depthOffset);
+                entity.setDepth(entity.y + entity.displayHeight + depthOffset);
 
                 if (
                     !this.scene
                         .getGameMapFrontWrapper()
                         .canEntityBePlaced(
-                            entity.getTopLeft(),
+                            entity.getPosition(),
                             entity.displayWidth,
                             entity.displayHeight,
                             entity.getCollisionGrid(),
-                            entity.getOldPositionTopLeft()
+                            entity.getOldPosition()
                         )
                 ) {
                     entity.setTint(0xff0000);
@@ -200,14 +194,14 @@ export class EntitiesManager extends Phaser.Events.EventEmitter {
                     !this.scene
                         .getGameMapFrontWrapper()
                         .canEntityBePlaced(
-                            entity.getTopLeft(),
+                            entity.getPosition(),
                             entity.displayWidth,
                             entity.displayHeight,
                             entity.getCollisionGrid(),
-                            entity.getOldPositionTopLeft()
+                            entity.getOldPosition()
                         )
                 ) {
-                    const oldPos = entity.getOldPositionTopLeft();
+                    const oldPos = entity.getOldPosition();
                     entity.setPosition(oldPos.x + entity.displayWidth * 0.5, oldPos.y + entity.displayHeight * 0.5);
                 } else {
                     const data: AtLeast<EntityData, "id"> = {
@@ -262,7 +256,7 @@ export class EntitiesManager extends Phaser.Events.EventEmitter {
         });
     }
 
-    public getEntities(): Map<number, Entity> {
+    public getEntities(): Map<string, Entity> {
         return this.entities;
     }
 
@@ -280,19 +274,5 @@ export class EntitiesManager extends Phaser.Events.EventEmitter {
 
     public clearProperties(): void {
         this.properties.clear();
-    }
-
-    private getEntityAlignWithGridOffset(entity: Entity): { x: number; y: number } {
-        const collisionGrid = entity.getEntityData().prefab.collisionGrid;
-        if (collisionGrid && collisionGrid.length > 0) {
-            return {
-                x: collisionGrid[0].length % 2 === 1 ? 16 : 0,
-                y: collisionGrid.length % 2 === 1 ? 16 : 0,
-            };
-        }
-        return {
-            x: Math.floor(entity.displayWidth / 32) % 2 === 1 ? 16 : 0,
-            y: Math.floor(entity.displayHeight / 32) % 2 === 1 ? 16 : 0,
-        };
     }
 }

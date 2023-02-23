@@ -20,14 +20,16 @@ import {
     SubToPusherRoomMessage,
     VariableWithTagMessage,
     ServerToClientMessage,
-    PingMessage,
+    RefreshRoomMessage,
+    MapStorageUrlMessage,
+    MapStorageToBackMessage,
 } from "../Messages/generated/messages_pb";
 import { ProtobufUtils } from "../Model/Websocket/ProtobufUtils";
 import { RoomSocket, ZoneSocket } from "../RoomManager";
 import { Admin } from "../Model/Admin";
 import { adminApi } from "../Services/AdminApi";
 import { isMapDetailsData, MapDetailsData, MapThirdPartyData, MapBbbData, MapJitsiData } from "@workadventure/messages";
-import { ITiledMap } from "@workadventure/tiled-map-type-guard";
+import { ITiledMap, ITiledMapProperty, Json } from "@workadventure/tiled-map-type-guard";
 import { mapFetcher } from "../Services/MapFetcher";
 import { VariablesManager } from "../Services/VariablesManager";
 import {
@@ -36,7 +38,6 @@ import {
     BBB_URL,
     ENABLE_CHAT,
     ENABLE_CHAT_UPLOAD,
-    ENABLE_FEATURE_MAP_EDITOR,
     JITSI_ISS,
     JITSI_URL,
     PUBLIC_MAP_STORAGE_URL,
@@ -49,7 +50,9 @@ import { ModeratorTagFinder } from "../Services/ModeratorTagFinder";
 import { MapLoadingError } from "../Services/MapLoadingError";
 import { MucManager } from "../Services/MucManager";
 import { BrothersFinder } from "./BrothersFinder";
+import { slugifyJitsiRoomName } from "@workadventure/shared-utils/src/Jitsi/slugify";
 import { getMapStorageClient } from "../Services/MapStorageClient";
+import { ClientReadableStream } from "@grpc/grpc-js";
 
 export type ConnectCallback = (user: User, group: Group) => void;
 export type DisconnectCallback = (user: User, group: Group) => void;
@@ -68,6 +71,9 @@ export class GameRoom implements BrothersFinder {
     private nextUserId = 1;
 
     private roomListeners: Set<RoomSocket> = new Set<RoomSocket>();
+    private mapStorageClientMessagesStream: ClientReadableStream<MapStorageToBackMessage> | undefined;
+    private reconnectMapStorageTimeout: NodeJS.Timeout | undefined;
+    private closing = false;
 
     private constructor(
         public readonly roomUrl: string,
@@ -83,7 +89,8 @@ export class GameRoom implements BrothersFinder {
         onEmote: EmoteCallback,
         onLockGroup: LockGroupCallback,
         onPlayerDetailsUpdated: PlayerDetailsUpdatedCallback,
-        private thirdParty: MapThirdPartyData | undefined
+        private thirdParty: MapThirdPartyData | undefined,
+        private editable: boolean
     ) {
         // A zone is 10 sprites wide.
         this.positionNotifier = new PositionNotifier(
@@ -127,16 +134,11 @@ export class GameRoom implements BrothersFinder {
             onEmote,
             onLockGroup,
             onPlayerDetailsUpdated,
-            mapDetails.thirdParty ?? undefined
+            mapDetails.thirdParty ?? undefined,
+            mapDetails.editable ?? false
         );
 
-        if (ENABLE_FEATURE_MAP_EDITOR) {
-            getMapStorageClient().ping(new PingMessage(), (err: unknown, res: unknown) => {
-                console.log(`==================================`);
-                console.log(err);
-                console.log(JSON.stringify(res));
-            });
-        }
+        gameRoom.connectToMapStorage();
 
         gameRoom
             .getMucManager()
@@ -194,7 +196,7 @@ export class GameRoom implements BrothersFinder {
             joinRoomMessage.getAvailabilitystatus(),
             socket,
             joinRoomMessage.getTagList(),
-            joinRoomMessage.getVisitcardurl(),
+            joinRoomMessage.getVisitcardurl()?.getValue() ?? null,
             joinRoomMessage.getName(),
             ProtobufUtils.toCharacterLayerObjects(joinRoomMessage.getCharacterlayerList()),
             this.roomUrl,
@@ -628,7 +630,7 @@ export class GameRoom implements BrothersFinder {
             let canEdit = false;
             const entityCollectionsUrls = [];
             const match = /\/~\/(.+)/.exec(roomUrlObj.pathname);
-            if (match) {
+            if (match && PUBLIC_MAP_STORAGE_URL) {
                 mapUrl = `${PUBLIC_MAP_STORAGE_URL}/${match[1]}`;
                 canEdit = true;
                 entityCollectionsUrls.push(`${PUBLIC_MAP_STORAGE_URL}/entityCollections`);
@@ -643,7 +645,7 @@ export class GameRoom implements BrothersFinder {
             }
             return {
                 mapUrl,
-                canEdit,
+                editable: canEdit,
                 entityCollectionsUrls,
                 authenticationMandatory: null,
                 group: null,
@@ -749,7 +751,39 @@ export class GameRoom implements BrothersFinder {
         if (this.jitsiModeratorTagFinderPromise === undefined) {
             this.jitsiModeratorTagFinderPromise = this.getMap()
                 .then((map) => {
-                    return new ModeratorTagFinder(map, "jitsiRoom", "jitsiRoomAdminTag");
+                    return new ModeratorTagFinder(
+                        map,
+                        (properties: ITiledMapProperty[]): { mainValue: string; tagValue: string } | undefined => {
+                            // We need to detect the "jitsiRoom" and "jitsiRoomAdminTag" properties AND to slugify the "jitsiRoom" in the same way
+                            // as we do on the front.
+                            let mainValue: string | undefined = undefined;
+                            let tagValue: string | undefined = undefined;
+                            for (const property of properties ?? []) {
+                                if (property.name === "jitsiRoom" && typeof property.value === "string") {
+                                    mainValue = property.value;
+                                } else if (
+                                    property.name === "jitsiRoomAdminTag" &&
+                                    typeof property.value === "string"
+                                ) {
+                                    tagValue = property.value;
+                                }
+                            }
+                            if (mainValue !== undefined && tagValue !== undefined) {
+                                // Compute allprops (needed for utility function)
+                                const allProps = new Map<string, string | number | boolean | Json>();
+                                for (const property of properties ?? []) {
+                                    if (property.value !== undefined) {
+                                        allProps.set(property.name, property.value);
+                                    }
+                                }
+                                return {
+                                    mainValue: slugifyJitsiRoomName(mainValue, this.roomUrl, allProps),
+                                    tagValue,
+                                };
+                            }
+                            return undefined;
+                        }
+                    );
                 })
                 .catch((e) => {
                     if (e instanceof LocalUrlError) {
@@ -801,7 +835,30 @@ export class GameRoom implements BrothersFinder {
         if (this.bbbModeratorTagFinderPromise === undefined) {
             this.bbbModeratorTagFinderPromise = this.getMap()
                 .then((map) => {
-                    return new ModeratorTagFinder(map, "bbbMeeting", "bbbMeetingAdminTag");
+                    return new ModeratorTagFinder(
+                        map,
+                        (properties: ITiledMapProperty[]): { mainValue: string; tagValue: string } | undefined => {
+                            let mainValue: string | undefined = undefined;
+                            let tagValue: string | undefined = undefined;
+                            for (const property of properties ?? []) {
+                                if (property.name === "bbbMeeting" && typeof property.value === "string") {
+                                    mainValue = property.value;
+                                } else if (
+                                    property.name === "bbbMeetingAdminTag" &&
+                                    typeof property.value === "string"
+                                ) {
+                                    tagValue = property.value;
+                                }
+                            }
+                            if (mainValue !== undefined && tagValue !== undefined) {
+                                return {
+                                    mainValue,
+                                    tagValue,
+                                };
+                            }
+                            return undefined;
+                        }
+                    );
                 })
                 .catch((e) => {
                     if (e instanceof LocalUrlError) {
@@ -946,5 +1003,67 @@ export class GameRoom implements BrothersFinder {
 
     get mapUrl(): string {
         return this._mapUrl;
+    }
+
+    public destroy(): void {
+        this.closing = true;
+        if (this.mapStorageClientMessagesStream) {
+            this.mapStorageClientMessagesStream.cancel();
+            this.mapStorageClientMessagesStream = undefined;
+        }
+    }
+
+    private killAndRetryMapStorageConnection(): void {
+        if (this.mapStorageClientMessagesStream) {
+            this.mapStorageClientMessagesStream.cancel();
+            this.mapStorageClientMessagesStream = undefined;
+            this.reconnectMapStorageTimeout = setTimeout(() => {
+                this.reconnectMapStorageTimeout = undefined;
+                this.connectToMapStorage();
+            }, 5_000);
+        }
+    }
+
+    private connectToMapStorage(): void {
+        if (this.editable && this.mapStorageClientMessagesStream === undefined) {
+            const mapStorageUrlMessage = new MapStorageUrlMessage();
+            mapStorageUrlMessage.setMapurl(this.mapUrl);
+            this.mapStorageClientMessagesStream = getMapStorageClient().listenToMessages(mapStorageUrlMessage);
+            this.mapStorageClientMessagesStream.on("data", (data: MapStorageToBackMessage) => {
+                if (data.hasMapstoragerefreshmessage()) {
+                    const msg = new RefreshRoomMessage().setRoomid(this.roomUrl);
+                    const comment = data.getMapstoragerefreshmessage()?.getComment();
+                    if (comment) {
+                        msg.setComment(comment).setTimetorefresh(30);
+                    }
+                    const message = new ServerToClientMessage().setRefreshroommessage(msg);
+                    this.users.forEach((user: User) => {
+                        user.socket.write(message);
+                    });
+                }
+            });
+            this.mapStorageClientMessagesStream.on("close", () => {
+                if (this.closing) {
+                    return;
+                }
+                console.log(
+                    "Connection to map-storage closed for GameRoom ",
+                    this.roomUrl,
+                    ". Retrying connection in 5 seconds"
+                );
+                this.killAndRetryMapStorageConnection();
+            });
+            this.mapStorageClientMessagesStream.on("error", () => {
+                if (this.closing) {
+                    return;
+                }
+                console.log(
+                    "An error occurred in the connection to map-storage for GameRoom ",
+                    this.roomUrl,
+                    ". Canceling and recreating connection in 5 seconds"
+                );
+                this.killAndRetryMapStorageConnection();
+            });
+        }
     }
 }

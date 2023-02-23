@@ -19,6 +19,7 @@ COPY libs/map-editor/package.json libs/map-editor/package.json
 COPY libs/math-utils/package.json libs/math-utils/package.json
 COPY libs/tailwind/package.json libs/tailwind/package.json
 COPY libs/store-utils/package.json libs/store-utils/package.json
+COPY libs/shared-utils/package.json libs/shared-utils/package.json
 RUN npm ci --workspace=workadventure-play --workspace=@workadventure/iframe-api-typings...
 COPY libs ./libs
 COPY --from=proto-builder /usr/libs/messages/src ./libs/messages/src
@@ -30,6 +31,7 @@ RUN cd play && npm run typesafe-i18n && npm run build-iframe-api && NODE_OPTIONS
 
 # final production image
 FROM node:18.12.1-buster-slim@sha256:62798b0191c85e2fc5f06897e345a6c9e8902ea3beedcb8e07463c665c37526d
+EXPOSE 3000
 WORKDIR /usr/src
 RUN apt-get update && apt-get install -y git
 COPY package.json package-lock.json ./
@@ -40,6 +42,7 @@ COPY libs/map-editor/package.json libs/map-editor/package.json
 COPY libs/math-utils/package.json libs/math-utils/package.json
 COPY libs/tailwind/package.json libs/tailwind/package.json
 COPY libs/store-utils/package.json libs/store-utils/package.json
+COPY libs/shared-utils/package.json libs/shared-utils/package.json
 ENV NODE_ENV=production
 RUN npm ci --omit=dev --workspace workadventure-play
 COPY --from=builder /usr/src/libs /usr/src/libs

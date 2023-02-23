@@ -1,4 +1,10 @@
-import { AtLeast, EntityData, GameMapProperties, TextHeaderPropertyData } from "@workadventure/map-editor";
+import {
+    AtLeast,
+    EntityData,
+    EntityDataProperties,
+    GameMapProperties,
+    TextHeaderPropertyData,
+} from "@workadventure/map-editor";
 import type OutlinePipelinePlugin from "phaser3-rex-plugins/plugins/outlinepipeline-plugin.js";
 import { SimpleCoWebsite } from "../../WebRtc/CoWebsite/SimpleCoWebsite";
 import { coWebsiteManager } from "../../WebRtc/CoWebsiteManager";
@@ -28,12 +34,13 @@ export class Entity extends Phaser.GameObjects.Image implements ActivatableInter
     private entityData: Required<EntityData>;
 
     private activatable: boolean;
-    private oldPositionTopLeft: { x: number; y: number };
+    private oldPosition: { x: number; y: number };
 
     constructor(scene: GameScene, data: EntityData) {
         super(scene, data.x, data.y, data.prefab.imagePath);
+        this.setOrigin(0);
 
-        this.oldPositionTopLeft = this.getTopLeft();
+        this.oldPosition = this.getPosition();
 
         this.entityData = {
             ...data,
@@ -46,7 +53,7 @@ export class Entity extends Phaser.GameObjects.Image implements ActivatableInter
             this.scene.input.setDraggable(this);
         }
 
-        this.setDepth(this.y + this.displayHeight * 0.5 + (this.entityData.prefab.depthOffset ?? 0));
+        this.setDepth(this.y + this.displayHeight + (this.entityData.prefab.depthOffset ?? 0));
 
         this.outlineColorStoreUnsubscribe = this.outlineColorStore.subscribe((color) => {
             if (color === undefined) {
@@ -68,7 +75,7 @@ export class Entity extends Phaser.GameObjects.Image implements ActivatableInter
         _.merge(this.entityData, dataToModify);
 
         this.setPosition(this.entityData.x, this.entityData.y);
-        this.oldPositionTopLeft = this.getTopLeft();
+        this.oldPosition = this.getPosition();
         this.activatable = this.hasAnyPropertiesSet();
         if (this.activatable) {
             this.setInteractive({ pixelPerfect: true, cursor: "pointer" });
@@ -253,20 +260,20 @@ export class Entity extends Phaser.GameObjects.Image implements ActivatableInter
         return this.entityData;
     }
 
-    public getProperties(): { [key: string]: unknown | undefined } {
+    public getProperties(): EntityDataProperties {
         return this.entityData.properties;
     }
 
-    public setProperty(key: string, value: unknown): void {
+    public setProperty<K extends keyof EntityDataProperties>(key: K, value: EntityDataProperties[K]): void {
         this.entityData.properties[key] = value;
         this.emit(EntityEvent.PropertiesUpdated, key, value);
     }
 
-    public getOldPositionTopLeft(): { x: number; y: number } {
-        return this.oldPositionTopLeft;
+    public getOldPosition(): { x: number; y: number } {
+        return this.oldPosition;
     }
 
-    public setOldPositionTopLeft(x: number, y: number): void {
-        this.oldPositionTopLeft = { x, y };
+    public setOldPosition(x: number, y: number): void {
+        this.oldPosition = { x, y };
     }
 }

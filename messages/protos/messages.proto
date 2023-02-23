@@ -186,7 +186,7 @@ message CreateAreaMessage {
 }
 
 message CreateEntityMessage {
-  int32 id = 1;
+  string id = 1;
   uint32 x = 2;
   uint32 y = 3;
   string collectionName = 4;
@@ -194,11 +194,11 @@ message CreateEntityMessage {
 }
 
 message DeleteEntityMessage {
-  int32 id = 1;
+  string id = 1;
 }
 
 message ModifyEntityMessage {
-  int32 id = 1;
+  string id = 1;
   optional uint32 x = 2;
   optional uint32 y = 3;
   map<string, google.protobuf.Value> properties = 4;
@@ -213,7 +213,6 @@ message ClientToServerMessage {
     WebRtcSignalToServerMessage webRtcSignalToServerMessage = 7;
     WebRtcSignalToServerMessage webRtcScreenSharingSignalToServerMessage = 8;
     PlayGlobalMessage playGlobalMessage = 9;
-    StopGlobalMessage stopGlobalMessage = 10;
     ReportPlayerMessage reportPlayerMessage = 11;
     EmotePromptMessage emotePromptMessage = 13;
     VariableMessage variableMessage = 14;
@@ -278,10 +277,6 @@ message PlayGlobalMessage {
   string type = 1;
   string content = 2;
   bool broadcastToWorld = 3;
-}
-
-message StopGlobalMessage {
-  string id = 1;
 }
 
 /************ Queries and answers ****************/
@@ -356,7 +351,7 @@ message SubMessage {
 }
 
 message BatchMessage {
-  string event = 1;
+  string event = 1; // FIXME: event seems to be useless
   repeated SubMessage payload = 2;
 }
 
@@ -438,6 +433,9 @@ message RoomJoinedMessage {
   repeated ApplicationMessage applications = 11;
   string userJid = 12;
   EditMapCommandsArrayMessage editMapCommandsArrayMessage = 13;
+  string webrtcUserName = 14;
+  string webrtcPassword = 15;
+  bool canEdit = 16;
 }
 
 message WebRtcStartMessage {
@@ -478,6 +476,8 @@ message RefreshRoomPromptMessage{
 message RefreshRoomMessage{
   string roomId = 1;
   int32 versionNumber = 2;
+  optional string comment = 3;
+  optional int32 timeToRefresh = 4;
 }
 
 message WorldFullMessage{
@@ -548,14 +548,15 @@ message JoinRoomMessage {
   repeated string tag = 6;
   string IPAddress = 7;
   CompanionMessage companion = 8;
-  string visitCardUrl = 9;
+  google.protobuf.StringValue visitCardUrl = 9;
   string userRoomToken = 10;
   AvailabilityStatus availabilityStatus = 11;
   bool activatedInviteUser = 12;
   bool isLogged = 13;
   repeated ApplicationMessage applications = 14;
   string userJid = 15;
-  string lastCommandId = 16;
+  google.protobuf.StringValue lastCommandId = 16;
+  bool canEdit = 17;
 }
 
 message UserJoinedZoneMessage {
@@ -632,6 +633,7 @@ message PusherToBackMessage {
     QueryMessage queryMessage = 21;
     AskPositionMessage askPositionMessage = 22;
     EditMapCommandMessage editMapCommandMessage = 23;
+    PingMessage pingMessage = 24;
   }
 }
 
@@ -710,6 +712,21 @@ message AdminPusherToBackMessage {
   }
 }
 
+
+message MapStorageToBackMessage {
+  oneof message {
+    MapStorageRefreshMessage mapStorageRefreshMessage = 1;
+  }
+}
+
+message MapStorageRefreshMessage {
+  string comment = 1;
+}
+
+message MapStorageUrlMessage {
+  string mapUrl = 1;
+}
+
 // A message sent by an administrator to a recipient
 message AdminMessage {
   string message = 1;
@@ -778,7 +795,6 @@ message MucRoomDefinitionMessage {
 }
 
 message XmppSettingsMessage{
-  string jid = 1;
   string conferenceDomain = 2;
   repeated MucRoomDefinitionMessage rooms = 3;
   string jabberId = 4;

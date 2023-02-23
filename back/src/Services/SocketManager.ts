@@ -108,13 +108,12 @@ export class SocketManager {
     ): Promise<{ room: GameRoom; user: User }> {
         //join new previous room
         const { room, user } = await this.joinRoom(socket, joinRoomMessage);
-
         const lastCommandId = joinRoomMessage.getLastcommandid();
         let commandsToApply: EditMapCommandMessage[] | undefined = undefined;
 
         if (lastCommandId) {
             const updateMapToNewestMessage = new UpdateMapToNewestMessage();
-            updateMapToNewestMessage.setCommandid(lastCommandId);
+            updateMapToNewestMessage.setCommandid(lastCommandId.getValue());
 
             const updateMapToNewestWithKeyMessage = new UpdateMapToNewestWithKeyMessage();
             updateMapToNewestWithKeyMessage.setMapkey(room.mapUrl);
@@ -147,6 +146,8 @@ export class SocketManager {
         roomJoinedMessage.setTagList(joinRoomMessage.getTagList());
         roomJoinedMessage.setUserroomtoken(joinRoomMessage.getUserroomtoken());
         roomJoinedMessage.setCharacterlayerList(joinRoomMessage.getCharacterlayerList());
+        roomJoinedMessage.setCanedit(joinRoomMessage.getCanedit());
+
         if (commandsToApply) {
             const editMapCommandsArrayMessage = new EditMapCommandsArrayMessage();
             editMapCommandsArrayMessage.setEditmapcommandsList(commandsToApply);
@@ -189,6 +190,11 @@ export class SocketManager {
             roomJoinedMessage.addPlayervariable(variableMessage);
         }
 
+        if (TURN_STATIC_AUTH_SECRET) {
+            const { username, password } = this.getTURNCredentials(user.id.toString(), TURN_STATIC_AUTH_SECRET);
+            roomJoinedMessage.setWebrtcusername(username);
+            roomJoinedMessage.setWebrtcpassword(password);
+        }
         const serverToClientMessage = new ServerToClientMessage();
         serverToClientMessage.setRoomjoinedmessage(roomJoinedMessage);
         socket.write(serverToClientMessage);
@@ -264,7 +270,7 @@ export class SocketManager {
         webrtcSignalToClient.setUserid(user.id);
         webrtcSignalToClient.setSignal(data.getSignal());
         // TODO: only compute credentials if data.signal.type === "offer"
-        if (TURN_STATIC_AUTH_SECRET !== "") {
+        if (TURN_STATIC_AUTH_SECRET) {
             const { username, password } = this.getTURNCredentials(user.id.toString(), TURN_STATIC_AUTH_SECRET);
             webrtcSignalToClient.setWebrtcusername(username);
             webrtcSignalToClient.setWebrtcpassword(password);
@@ -294,7 +300,7 @@ export class SocketManager {
         webrtcSignalToClient.setUserid(user.id);
         webrtcSignalToClient.setSignal(data.getSignal());
         // TODO: only compute credentials if data.signal.type === "offer"
-        if (TURN_STATIC_AUTH_SECRET !== "") {
+        if (TURN_STATIC_AUTH_SECRET) {
             const { username, password } = this.getTURNCredentials(user.id.toString(), TURN_STATIC_AUTH_SECRET);
             webrtcSignalToClient.setWebrtcusername(username);
             webrtcSignalToClient.setWebrtcpassword(password);
@@ -564,7 +570,7 @@ export class SocketManager {
             const webrtcStartMessage1 = new WebRtcStartMessage();
             webrtcStartMessage1.setUserid(otherUser.id);
             webrtcStartMessage1.setInitiator(true);
-            if (TURN_STATIC_AUTH_SECRET !== "") {
+            if (TURN_STATIC_AUTH_SECRET) {
                 const { username, password } = this.getTURNCredentials(
                     otherUser.id.toString(),
                     TURN_STATIC_AUTH_SECRET
@@ -581,7 +587,7 @@ export class SocketManager {
             const webrtcStartMessage2 = new WebRtcStartMessage();
             webrtcStartMessage2.setUserid(user.id);
             webrtcStartMessage2.setInitiator(false);
-            if (TURN_STATIC_AUTH_SECRET !== "") {
+            if (TURN_STATIC_AUTH_SECRET) {
                 const { username, password } = this.getTURNCredentials(user.id.toString(), TURN_STATIC_AUTH_SECRET);
                 webrtcStartMessage2.setWebrtcusername(username);
                 webrtcStartMessage2.setWebrtcpassword(password);
@@ -608,8 +614,8 @@ export class SocketManager {
         hmac.end();
         const password = hmac.read() as string;
         return {
-            username: username,
-            password: password,
+            username,
+            password,
         };
     }
 
@@ -714,11 +720,7 @@ export class SocketManager {
         if (user.tags.includes("admin")) {
             isAdmin = true;
         } else {
-            // Let's remove the prefix added by the front to make the Jitsi room unique:
-            // Note: this is not 100% perfect as this will fail on Jitsi rooms with "NoPrefix" option set and containing a "-" in the room name.
-            const jitsiRoomSuffix = jitsiRoom.match(/\w*-(.+)/);
-            const finalRoomName = jitsiRoomSuffix && jitsiRoomSuffix[1] ? jitsiRoomSuffix[1] : jitsiRoom;
-            const moderatorTag = await gameRoom.getModeratorTagForJitsiRoom(finalRoomName);
+            const moderatorTag = await gameRoom.getModeratorTagForJitsiRoom(jitsiRoom);
             if (moderatorTag && user.tags.includes(moderatorTag)) {
                 isAdmin = true;
             }
@@ -930,6 +932,7 @@ export class SocketManager {
 
     private cleanupRoomIfEmpty(room: GameRoom): void {
         if (room.isEmpty()) {
+            room.destroy();
             this.roomsPromises.delete(room.roomUrl);
             const deleted = this.resolvedRooms.delete(room.roomUrl);
             if (deleted) {
@@ -1134,7 +1137,7 @@ export class SocketManager {
             (err: unknown, editMapMessage: EditMapCommandMessage) => {
                 if (err) {
                     emitError(user.socket, err);
-                    throw err;
+                    return;
                 }
                 const subMessage = new SubToPusherRoomMessage();
                 subMessage.setEditmapcommandmessage(editMapMessage);
