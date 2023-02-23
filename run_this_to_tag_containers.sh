@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONTAINERVERSION=custom-0.0.4
+CONTAINERVERSION=custom-0.0.5
 
 for i in play chat back map-storage uploader maps ejabberd ; do
 
