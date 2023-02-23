@@ -27,5 +27,5 @@ echo "#########################################################"
 
 
 # using this bash line to compute words-to-translate
-# for i in $(find front/src/i18n/de-DE/ -name "*.ts"); do cat $i | grep '"' | grep -v import | grep -v const | sed -e s/.*\:// ; done  | wc
-
+# for i in $(find play/src/i18n/de-DE/ -name "*.ts"); do cat $i | grep '"' | grep -v import | grep -v const | sed -e s/.*\:// ; done  | wc
+# for i in $(find chat/src/i18n/de-DE/ -name "*.ts"); do cat $i | grep '"' | grep -v import | grep -v const | sed -e s/.*\:// ; done  | wc
