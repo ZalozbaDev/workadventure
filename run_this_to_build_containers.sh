@@ -11,7 +11,7 @@ if [ $# > 1 ]; then
 fi
 
 # build all containers with context ad git root dir
-for i in play chat back map-storage ; do
+for i in play chat ; do
 	
 
 	echo "#########################################################"
@@ -22,27 +22,3 @@ for i in play chat back map-storage ; do
 
 done
 
-# build containers with special instructions
-
-echo "#########################################################"
-echo "################ UPLOADER ##################################"
-echo "#########################################################"
-
-# really extra? no context specified
-docker buildx build -t workadventure-uploader-custom -f uploader/Dockerfile . $ADDITIONAL_ARGS
-
-echo "#########################################################"
-echo "################ MAPS ##################################"
-echo "#########################################################"
-
-pushd maps
-docker buildx build -t workadventure-maps-custom . $ADDITIONAL_ARGS
-popd
-
-echo "#########################################################"
-echo "################ EJABBERD ##################################"
-echo "#########################################################"
-
-pushd xmpp
-docker buildx build -t workadventure-ejabberd-custom . $ADDITIONAL_ARGS
-popd
