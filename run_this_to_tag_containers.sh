@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONTAINERVERSION=v1.17.4-custom-0.0.1
+CONTAINERVERSION=v1.17.4-custom-0.0.3
 
 for i in play chat ; do
 
