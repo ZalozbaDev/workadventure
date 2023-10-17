@@ -20,7 +20,7 @@ import actionbar from "./actionbar";
 import mapEditor from "./mapEditor";
 import megaphone from "./megaphone";
 
-const hsb_DE = merge(en_US, {
+const dsb_DE = merge(en_US, {
     audio,
     camera,
     chat,
@@ -42,4 +42,4 @@ const hsb_DE = merge(en_US, {
     megaphone,
 });
 
-export default hsb_DE;
+export default dsb_DE;
